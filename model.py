@@ -1,11 +1,15 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppresses C++ level warnings
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
 import sys
 
 import math
 import time
 import argparse
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+tf.get_logger().setLevel('ERROR')
 
 
 fc = tf.keras.layers.Dense
@@ -100,7 +104,7 @@ class Model:
         self.args = args
         x_size = args.map_size[0] * args.map_size[1]
         self.out_size = args.vocab_size
-
+        out_size = self.out_size # <--- ADD THIS LOCAL VARIABLE
         with tf.variable_scope("embeddings"):
             embeddings = tf.Variable(
                     tf.random_uniform([x_size, args.token_dim], -1.0, 1.0),

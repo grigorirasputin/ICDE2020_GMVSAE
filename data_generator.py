@@ -1,11 +1,16 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppresses C++ level warnings
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
+
 import sys
 import pickle
 import numpy as np
 # import matplotlib.pyplot as plt
 
 from collections import defaultdict
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+tf.get_logger().setLevel('ERROR')  # Suppresses Python level deprecation warnings
 
 
 
