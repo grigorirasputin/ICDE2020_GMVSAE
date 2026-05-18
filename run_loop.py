@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
-tf.get_logger().setLevel('ERROR')
+
 
 from data_generator import DataGenerator
 from model import Model
@@ -110,16 +110,10 @@ def run_train(model, args, master='', is_chief=True):
            tensor_to_log, every_n_iter=args.log_steps))
 
     # output hook
-    # Build the folder name safely
-    folder_name = f"{args.model}_{args.token_dim}_{args.rnn_dim}_{args.cluster_num}"
-    
-    # Use os.path.join to handle Windows (\) vs Linux (/) slashes perfectly
-    # Use abspath to give TensorFlow an absolute path (C:\Users\...) which prevents temp folder bugs
-    ckpt_dir = os.path.abspath(os.path.join(args.model_dir, folder_name))
-    output_dir = ckpt_dir
-    
-    # Create the directory safely
-    os.makedirs(ckpt_dir, exist_ok=True)
+    output_dir = ckpt_dir = '{}/{}_{}_{}_{}'.format(
+            args.model_dir, args.model,
+            args.token_dim, args.rnn_dim, args.cluster_num)
+    print("output dir: {}".format(output_dir))
     hooks.append(tf.train.CheckpointSaverHook(checkpoint_dir=ckpt_dir, save_steps=500,
                  saver=tf.train.Saver(max_to_keep=1)))
 
@@ -163,16 +157,19 @@ def run_evaluate(model, args, master='', is_chief=True):
 
     sampler = DataGenerator(args)
 
-    eval_data = 'train'
+    eval_data = 'test' # remember to change to train and val 
     if eval_data == 'train':
-        traj_num = sampler.val_traj_num
+        traj_num = sampler.train_traj_num
         sd_tids = sampler.train_sd
     elif eval_data == 'val':
         traj_num = sampler.val_traj_num
         sd_tids = sampler.val_sd
+    elif eval_data == 'test':               # <--- ADD THIS BLOCK
+        traj_num = sampler.test_traj_num
+        sd_tids = sampler.test_sd
 
-    sampler.inject_outliers(otype='random', data_type=eval_data, ratio=0.05, 
-                            level=3, point_prob=0.3, vary=False)
+    #sampler.inject_outliers(otype='random', data_type=eval_data, ratio=0.05, 
+    #                        level=3, point_prob=0.3, vary=False)
 
     batch_size = args.batch_size
     dataset = tf.data.Dataset.from_generator(
@@ -184,12 +181,13 @@ def run_evaluate(model, args, master='', is_chief=True):
 
     global_step = tf.train.get_or_create_global_step()
 
-    output_dir = ckpt_dir = '{}/{}_{}_{}_{}'.format(
-            args.model_dir, args.model,
-            args.token_dim, args.rnn_dim, args.cluster_num)
-    import os
-    os.makedirs(ckpt_dir, exist_ok=True)# ADDED
-    score_vals = []  # ADDED 
+    global_step = tf.train.get_or_create_global_step()
+
+    # USE WINDOWS PATHS:
+    folder_name = f"{args.model}_{args.token_dim}_{args.rnn_dim}_{args.cluster_num}"
+    ckpt_dir = os.path.abspath(os.path.join(args.model_dir, folder_name))
+    
+    score_vals = []
 
     with tf.train.MonitoredTrainingSession(
         master=master,
@@ -216,7 +214,7 @@ def run_evaluate(model, args, master='', is_chief=True):
     sd_auc = np.array(sd_auc)
     print("Average AUC:", np.mean(sd_auc))
     """
-    save_path = f"scores_{args.model}_{args.mode}.npy"
+    save_path = f"scores_{args.model}_{eval_data}.npy"
     np.save(save_path, score_vals)
     print(f"Successfully saved {len(score_vals)} raw anomaly scores to {save_path}")
     # Force exit so it doesn't crash on their old AUC code

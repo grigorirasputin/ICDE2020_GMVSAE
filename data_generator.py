@@ -22,9 +22,11 @@ class DataGenerator:
 
         self.train_trajectories, self.train_sd, self.train_traj_num = self.build_dataset('train')
         self.val_trajectories, self.val_sd, self.val_traj_num = self.build_dataset('val')
+        self.test_trajectories, self.test_sd, self.test_traj_num = self.build_dataset('test')
 
         self.data_iterator = {'train': lambda: self.iterate_data(data_type='train'),
-                              'val': lambda: self.iterate_data(data_type='val')}
+                              'val': lambda: self.iterate_data(data_type='val'),
+                              'test': lambda: self.iterate_data(data_type='test')}
 
     def build_dataset(self, data_type):
         args = self.args
@@ -118,9 +120,16 @@ class DataGenerator:
         if data_type == 'train':
             traj_num = self.train_traj_num
             trajectories = self.train_trajectories + self.train_trajectories[:batch_size]
+            sd_tids = self.train_sd # Added n
         elif data_type == 'val':
             traj_num = self.val_traj_num
             trajectories = self.val_trajectories + self.val_trajectories[:batch_size]
+            sd_tids = self.val_sd # Added N
+        elif data_type == 'test':                 
+            traj_num = self.test_traj_num
+            # ADD THE PADDING HACK HERE:
+            trajectories = self.test_trajectories + self.test_trajectories[:batch_size] 
+            sd_tids = self.test_sd
 
         for shortest_idx in range(0, traj_num, batch_size):
             longest_idx = shortest_idx + batch_size
