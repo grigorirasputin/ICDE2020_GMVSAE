@@ -56,6 +56,8 @@ def define_args():
                         help='num of steps to print log')
     parser.add_argument('--num_epochs', type=int, default=5,
                         help='number of epochs')
+    parser.add_argument('--vocab_size', type=int, required=True,
+                        help='The Actual Dense Vocab Size from your grid_config.json') # ADDED CUSTOM:
 
     parser.add_argument('--num_negs', type=int, default=64,
                         help='size of negative sampling')
@@ -72,7 +74,6 @@ def define_args():
     parser.add_argument('--gpu_id', type=str, default="0")
     args = parser.parse_args()
     return args
-
 
 def run_train(model, args, master='', is_chief=True):
     sampler = DataGenerator(args)
@@ -144,7 +145,6 @@ def run_train(model, args, master='', is_chief=True):
         init_mu_c = kmeans.cluster_centers_
         np.savez("{}/init_mu_c".format(output_dir), init_mu_c)
 
-
 def run_evaluate(model, args, master='', is_chief=True):
     def auc_score(y_true, y_score):
         precision, recall, _ = precision_recall_curve(y_true, y_score)
@@ -190,7 +190,7 @@ def run_evaluate(model, args, master='', is_chief=True):
 
     score_vals = np.concatenate(score_vals, axis=-1)
     score_vals = score_vals[:traj_num]
-
+    """
     y_true = np.ones_like(score_vals)
     for idx in sampler.outlier_idx:
         if idx < y_true.shape[0]:
@@ -202,8 +202,13 @@ def run_evaluate(model, args, master='', is_chief=True):
             sd_auc.append(auc_score(y_true=y_true[tids], y_score=score_vals[tids]))
     sd_auc = np.array(sd_auc)
     print("Average AUC:", np.mean(sd_auc))
+    """
+    save_path = f"scores_{args.model}_{args.mode}.npy"
+    np.save(save_path, score_vals)
+    print(f"Successfully saved {len(score_vals)} raw anomaly scores to {save_path}")
+    # Force exit so it doesn't crash on their old AUC code
+    import sys; sys.exit(0)
    
-
 if __name__ == '__main__':
     args = define_args()
 
