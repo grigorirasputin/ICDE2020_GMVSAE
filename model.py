@@ -103,7 +103,7 @@ class Model:
     def __init__(self, args):
         self.args = args
         x_size = args.map_size[0] * args.map_size[1]
-        self.out_size = args.vocab_size
+        self.out_size = out_size = x_size
         out_size = self.out_size # <--- ADD THIS LOCAL VARIABLE
         with tf.variable_scope("embeddings"):
             embeddings = tf.Variable(

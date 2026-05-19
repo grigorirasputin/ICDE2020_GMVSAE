@@ -37,11 +37,15 @@ def define_args():
     parser.add_argument('--mode', type=str, default="train",
                         help='choose a mode')
 
+    parser.add_argument('--eval_split', type=str, default='val', choices=['val', 'test'],
+                        help='Which split to evaluate (val or test)')
+
     parser.add_argument('--data_filename', type=str, default="./data/processed_porto.csv",
                         help='data file')
 
-    parser.add_argument('--map_size', type=tuple, default=(51, 158),
-                        help='size of map')
+    parser.add_argument('--map_size', type=int, nargs=2, default=[98, 65],
+                        help='Grid dimensions: M_columns and N_rows')
+
     parser.add_argument('--model', type=str, default="gmvsae",
                         help='choose a model')
 
@@ -61,8 +65,8 @@ def define_args():
                         help='num of steps to print log')
     parser.add_argument('--num_epochs', type=int, default=5,
                         help='number of epochs')
-    parser.add_argument('--vocab_size', type=int, required=True,
-                        help='The Actual Dense Vocab Size from your grid_config.json') # ADDED CUSTOM:
+    #parser.add_argument('--vocab_size', type=int, required=True,
+                    #     help='The Actual Dense Vocab Size from your grid_config.json') # ADDED CUSTOM:
 
     parser.add_argument('--num_negs', type=int, default=64,
                         help='size of negative sampling')
@@ -109,11 +113,15 @@ def run_train(model, args, master='', is_chief=True):
         tf.train.LoggingTensorHook(
            tensor_to_log, every_n_iter=args.log_steps))
 
-    # output hook
-    output_dir = ckpt_dir = '{}/{}_{}_{}_{}'.format(
-            args.model_dir, args.model,
-            args.token_dim, args.rnn_dim, args.cluster_num)
-    print("output dir: {}".format(output_dir))
+    # Build the folder name safely
+    folder_name = f"{args.model}_{args.token_dim}_{args.rnn_dim}_{args.cluster_num}"
+    
+    # Use os.path.abspath and os.path.join to handle Windows slashes correctly
+    ckpt_dir = os.path.abspath(os.path.join(args.model_dir, folder_name))
+    output_dir = ckpt_dir
+    
+    # Ensure the directory exists
+    os.makedirs(ckpt_dir, exist_ok=True)
     hooks.append(tf.train.CheckpointSaverHook(checkpoint_dir=ckpt_dir, save_steps=500,
                  saver=tf.train.Saver(max_to_keep=1)))
 
@@ -157,7 +165,8 @@ def run_evaluate(model, args, master='', is_chief=True):
 
     sampler = DataGenerator(args)
 
-    eval_data = 'test' # remember to change to train and val 
+    eval_data = args.eval_split #remove hardcoded one 
+    # eval_data = 'test' # remember to change to train and val 
     if eval_data == 'train':
         traj_num = sampler.train_traj_num
         sd_tids = sampler.train_sd
