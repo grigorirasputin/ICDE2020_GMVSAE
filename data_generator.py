@@ -1,5 +1,5 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppresses C++ level warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
 os.environ['TF_USE_LEGACY_KERAS'] = '1'
 
 import sys
@@ -33,9 +33,18 @@ class DataGenerator:
         data_name = args.data_filename.split('.')
         data_name[-2] += "_{}".format(data_type)
         data_name = ".".join(data_name)
-        trajectories = sorted([
+        """trajectories = sorted([
             eval(eachline) for eachline in open(data_name, 'r').readlines()
-        ], key=lambda k: len(k))
+        ], key=lambda k: len(k))"""
+        # 1. Load the raw data in its original order
+        trajectories = [
+            eval(eachline) for eachline in open(data_name, 'r').readlines()
+        ]
+        
+        # 2. ONLY sort the training set for maximum GPU speed. 
+        # Leave val and test completely untouched so they match your metadata CSVs!
+        if data_type == 'train':
+            trajectories = sorted(trajectories, key=lambda k: len(k))
         traj_num = len(trajectories)
         print("{} {} trajectories loading complete.".format(traj_num, data_type))
         # traj_sd = {idx: [traj[0], traj[-1]] for idx, traj in enumerate(trajectories)}

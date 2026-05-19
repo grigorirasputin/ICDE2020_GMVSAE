@@ -1,5 +1,5 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppresses C++ level warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'  # Suppresses C++ level warnings
 os.environ['TF_USE_LEGACY_KERAS'] = '1'
 
 import sys
@@ -233,7 +233,7 @@ if __name__ == '__main__':
     args = define_args()
 
     tf.logging.set_verbosity(tf.logging.INFO)
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+    #os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
     model = Model(args)
     if args.mode == 'train':

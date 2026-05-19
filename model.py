@@ -1,5 +1,5 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppresses C++ level warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0' # Suppresses C++ level warnings
 os.environ['TF_USE_LEGACY_KERAS'] = '1'
 import sys
 
