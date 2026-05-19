@@ -129,30 +129,36 @@ class DataGenerator:
         if data_type == 'train':
             traj_num = self.train_traj_num
             trajectories = self.train_trajectories + self.train_trajectories[:batch_size]
-            sd_tids = self.train_sd # Added n
+            sd_tids = self.train_sd 
         elif data_type == 'val':
             traj_num = self.val_traj_num
             trajectories = self.val_trajectories + self.val_trajectories[:batch_size]
-            sd_tids = self.val_sd # Added N
+            sd_tids = self.val_sd 
         elif data_type == 'test':                 
             traj_num = self.test_traj_num
-            # ADD THE PADDING HACK HERE:
             trajectories = self.test_trajectories + self.test_trajectories[:batch_size] 
             sd_tids = self.test_sd
 
+        # 1. Group data into batches linearly (Maintains GPU padding efficiency)
+        batches = []
         for shortest_idx in range(0, traj_num, batch_size):
             longest_idx = shortest_idx + batch_size
             batch_trajectories = []
             for tid in range(shortest_idx, longest_idx):
                 partial = int(len(trajectories[tid]) * partial_ratio)
                 batch_trajectories.append(trajectories[tid][:partial])
-                # batch_s.append(self.traj_sd_cluster[tid][0])
-                # batch_d.append(self.traj_sd_cluster[tid][1])
+            
             batch_seq_length = [len(traj) for traj in batch_trajectories]
             batch_x, batch_mask = self.pad_and_mask(batch_trajectories)
-            # if "sd" in self.args.model or sd is True:
-            #     return [batch_x, batch_mask, batch_seq_length], [batch_s, batch_d]
-            # else:
+            batches.append((batch_x, batch_mask, batch_seq_length))
+        
+        # 2. CRUCIAL FIX: Shuffle the order of the batches during training!
+        if data_type == 'train':
+            import random
+            random.shuffle(batches)
+
+        # 3. Yield the shuffled batches to the model
+        for batch_x, batch_mask, batch_seq_length in batches:
             yield batch_x, batch_mask, batch_seq_length
 
     def _perturb_point(self, point, level, offset=None):

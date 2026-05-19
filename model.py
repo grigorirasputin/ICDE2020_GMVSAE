@@ -148,13 +148,25 @@ class Model:
         return res
 
     def anomaly_score(self, outputs, targets, masks):
+        args = self.args
         masks = tf.cast(masks, tf.float32)
-        target_out_w = tf.nn.embedding_lookup(self.out_w, targets)
-        target_out_b = tf.nn.embedding_lookup(self.out_b, targets)
-        score = tf.reduce_sum(
-                masks * tf.exp(tf.log_sigmoid(
-                    tf.reduce_sum(outputs * target_out_w, axis=-1) + target_out_b
-                    )), axis=-1, name="anomaly_score") / tf.reduce_sum(masks, axis=-1)
+        
+        # 1. Flatten outputs for safe matrix multiplication
+        outputs_2d = tf.reshape(outputs, [-1, args.rnn_dim])
+        
+        # 2. Calculate logits for EVERY cell on the map (all 6370 cells)
+        logits_2d = tf.matmul(outputs_2d, self.out_w, transpose_b=True) + self.out_b
+        full_logits = tf.reshape(logits_2d, [args.batch_size, -1, self.out_size])
+        
+        # 3. Convert to true relative probabilities (Softmax)
+        log_probs = tf.nn.log_softmax(full_logits, axis=-1)
+        
+        # 4. Extract the relative probability of the ACTUAL cell visited
+        target_one_hot = tf.one_hot(targets, self.out_size)
+        target_log_probs = tf.reduce_sum(log_probs * target_one_hot, axis=-1)
+        
+        # 5. Average the true probabilities over the valid trajectory length
+        score = tf.reduce_sum(masks * tf.exp(target_log_probs), axis=-1) / tf.reduce_sum(masks, axis=-1)
         return score
 
     def loss(self, outputs, targets, masks, latent_losses):
